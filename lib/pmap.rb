@@ -73,12 +73,12 @@ module PMap
     base.class_eval do
 
       # @see PMap#pmap
-      def pmap(thread_count=nil, &proc)
+      def pmap(thread_count=nil, options={}, &proc)
         return self unless proc
 
         array_mutex = Mutex.new
         Array.new.tap do |result|
-          peach_with_index(thread_count) do |item, index|
+          peach_with_index(thread_count, options) do |item, index|
             value = proc.call(item)
             array_mutex.synchronize { result[index] = value }
           end
@@ -86,9 +86,9 @@ module PMap
       end
 
       # @see PMap#peach
-      def peach(thread_count=nil, &proc)
+      def peach(thread_count=nil, options={}, &proc)
         if proc
-          peach_with_index(thread_count) do |item, index|
+          peach_with_index(thread_count, options) do |item, index|
             proc.call(item)
           end
         end
@@ -96,11 +96,11 @@ module PMap
       end
 
       # @see PMap#peach_with_index
-      def peach_with_index(thread_count=nil, &proc)
+      def peach_with_index(thread_count=nil, options={}, &proc)
         return each_with_index unless proc
 
         thread_count ||= $pmap_default_thread_count
-        pool = ThreadPool.new(thread_count)
+        pool = ThreadPool.new(thread_count, options)
 
         each_with_index do |item, index|
           pool.schedule(item, index, &proc)
@@ -110,10 +110,10 @@ module PMap
       end
 
       # @see PMap#flat_pmap
-      def flat_pmap(thread_count=nil, &proc)
+      def flat_pmap(thread_count=nil, options={}, &proc)
         return self unless proc
 
-        pmap(thread_count, &proc).flatten(1)
+        pmap(thread_count, options, &proc).flatten(1)
       end
     end
   end

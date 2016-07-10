@@ -18,13 +18,15 @@ module PMap
     #
     # max - the maximum number of threads to spawn
     #
-    def initialize(max)
+    def initialize(max, options={})
       raise ArgumentError, "max must be at least one." unless
         max.respond_to?(:>=) && max >= 1
 
       @max = max
       @jobs = Queue.new
       @workers = []
+      @startup = options[:startup]
+      @shutdown = options[:shutdown]
     end
 
     # Public: Schedules a new job to run in a thread
@@ -53,10 +55,12 @@ module PMap
     #
     def spawn_worker
       thread = Thread.new do
+        @startup.call if @startup
         while (command = @jobs.pop) != :stop_working
           job, args = command
           job.call(*args)
         end
+        @shutdown.call if @shutdown
       end
 
       @workers << thread
